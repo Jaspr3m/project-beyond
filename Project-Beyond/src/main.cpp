@@ -108,15 +108,6 @@ void loop() {
       lighting = false;
     }
   }
-  
-
-        //   brightness += 5; // increment red
-        // orangeBrightness += 5; // increment orange 
-        // if (brightness == 255 || orangeBrightness == 165) {
-        //   leds.setColorRGB(0, brightness, orangeBrightness, 0);
-        // } else {
-        // } 
-
 
   // Volume down process
   if (volumeDown) {
