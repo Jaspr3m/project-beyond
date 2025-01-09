@@ -18,7 +18,7 @@
 // MP3 player declarations
 MP3 mp3(MP3_RX, MP3_TX);        // MP3 Player
 int8_t index  = 3; // 1 - 10
-int8_t volume = 15; // 0 - 30
+float volume = 0.0; // 0 - 30
 
 // ChainableLED declarations
 ChainableLED leds(5, 6, 1);     // 1 LED on D5, D6
@@ -27,6 +27,8 @@ ChainableLED leds(5, 6, 1);     // 1 LED on D5, D6
 bool previousButtonState = LOW;
 bool ledState = LOW;
 bool dimming = false;
+bool volumeDown = false;
+float volumeOff = 0.0;
 int brightness = 255; // Initial brightness
 
 // put (function) declarations here:
@@ -38,13 +40,13 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);   // Built-in LED as output
   pinMode(KNOB, INPUT);           // Knob 
 
-  // start serial monitor
-  Serial.begin(9600);             // Write to Serial Monitor
+  Serial.begin(9600);             // Write to Serial Monito
+  Serial.println("Serial 9600");
 
-  // music starts playing 
-  delay(500);
+  delay(500); // Requires 500ms to wait for the MP3 module to initialize  
   mp3.playWithVolume(index, volume);
-  delay(50);  
+  Serial.println("Playing music...");
+  delay(50); // you should wait for >=50ms between two commands
 }
 
 void loop() {
@@ -56,11 +58,12 @@ void loop() {
   if (buttonState == pressed) {
     // Start the dimming process
     dimming = true;
+    volumeDown = true;
   } else {
-    // Stop the dimming process
     dimming = false;
+    volumeDown = false;
     brightness = 255; // Reset brightness
-    digitalWrite(LED_BUILTIN, LOW); // Ensure the built-in LED is off
+    volume = 15; // Reset volume
     leds.setColorRGB(0, 0, 0, 0); // Ensure the Chainable LED is off
   }
 
@@ -68,13 +71,25 @@ void loop() {
   if (dimming) {
     if (brightness > 0) {
       brightness -= 5; // Decrease brightness
-      analogWrite(LED_BUILTIN, brightness); // Adjust the built-in LED brightness
       leds.setColorRGB(0, brightness, 0, 0); // Adjust the Chainable LED brightness
-      delay(50); // Delay to make the dimming visible
+      delay(100); // Delay to make the dimming visible
     } else {
       dimming = false; // Stop dimming when brightness reaches 0
-      digitalWrite(LED_BUILTIN, LOW); // Ensure the built-in LED is off
+      volumeDown = false; // Stop volume down process
       leds.setColorRGB(0, 0, 0, 0); // Ensure the Chainable LED is off
+    }
+  }
+
+  // Volume down process
+  if (volumeDown) {
+    if (volume > 0) {
+      volume -= 0.30;
+      mp3.setVolume(volume); // Update the volume in the MP3 player
+      Serial.println(volume);
+    } else if (volume == volumeOff) {
+      volume = 0;
+      mp3.setVolume(volume); // Reset the volume in the MP3 player
+      Serial.println(volume);
     }
   }
 

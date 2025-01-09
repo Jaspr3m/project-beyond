@@ -40,20 +40,32 @@ If using multiple software serial ports, only one can receive data at a time.
 #include <SoftwareSerial.h>
 #include "RedMP3.h"
 
-#define MP3_RX 4 //RX of Serial MP3 module connect to D4 of Arduino
-#define MP3_TX 5 //TX to D2, note that D2 can not be used as RX on Mega2560, you should modify this if you do not use Arduino UNO
+#define MP3_RX 4 // RX of Serial MP3 module connect to D4 of Arduino
+#define MP3_TX 5 // TX to D2, note that D2 can not be used as RX on Mega2560, you should modify this if you do not use Arduino UNO
 MP3 mp3(MP3_RX, MP3_TX);
 
-int8_t index  = 2; // 1 - 10
+int8_t index  = 3; // 1 - 10
 int8_t volume = 15; // 0 - 30 
-void setup()
-{
-  delay(500);//Requires 500ms to wait for the MP3 module to initialize  
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+  delay(500); // Requires 500ms to wait for the MP3 module to initialize  
   mp3.playWithVolume(index, volume);
-  delay(50);//you should wait for >=50ms between two commands
+  Serial.println("Playing music...");
+  delay(50); // you should wait for >=50ms between two commands
 }
 
-void loop()
-{
+void loop() {
+  if (volume > 0) {
+    volume -= 1;
+    mp3.setVolume(volume); // Update the volume in the MP3 player
+    Serial.println(volume);
+  } else {
+    volume = 15;
+    mp3.setVolume(volume); // Reset the volume in the MP3 player
+    Serial.println(volume);
+  }
+
+  delay(500);
 }
 
