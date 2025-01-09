@@ -3,6 +3,22 @@
 #include <RedMP3.h>
 #include <ChainableLED.h>
 
+// aan en uit knop om alles te laten werken (normale lamp)
+// leg je telefoon op de pressure plate en dan rood licht op de (ledstrip)
+// in de ochtend krijg je weer oranje licht
+// straf (telli eraf) = wit licht & muziek uit
+
+// remove the damn led
+
+// OPTIONAL: ledstrip voor hoe lang geluid afspeelt
+// OPTIONAL: ledstrip voor hoe laat je wakker wil worden
+// OPTIONAL: ledstrip voor hoe lang het rood licht brandt na telefoon op pressure sensor
+// ledstrip voor rood licht
+
+// knob voor wanneer je wakker wil worden
+// knob voor hoe lang licht nadat je telefoon erop ligt
+// knob voor hoe lang geluid
+
 // D2 = on/off
 // D5 & D6 = LED
 // D8 = music player
@@ -27,9 +43,11 @@ ChainableLED leds(5, 6, 1);     // 1 LED on D5, D6
 bool previousButtonState = LOW;
 bool ledState = LOW;
 bool dimming = false;
+bool lighting = false;
 bool volumeDown = false;
 float volumeOff = 0.0;
-int brightness = 255; // Initial brightness
+int redBrightness = 255; // Initial brightness
+int orangeBrightness = 165;
 
 // put (function) declarations here:
 // int myFunction(int, int);
@@ -62,23 +80,43 @@ void loop() {
   } else {
     dimming = false;
     volumeDown = false;
-    brightness = 255; // Reset brightness
+    redBrightness = 255; // Reset brightness
     volume = 15; // Reset volume
-    leds.setColorRGB(0, 0, 0, 0); // Ensure the Chainable LED is off
+    leds.setColorRGB(0, 255, 255, 255); // Ensure the Chainable LED is off
   }
 
   // Dimming process
   if (dimming) {
-    if (brightness > 0) {
-      brightness -= 5; // Decrease brightness
-      leds.setColorRGB(0, brightness, 0, 0); // Adjust the Chainable LED brightness
+    if (redBrightness > 0) {
+      redBrightness -= 5; // Decrease brightness
+      leds.setColorRGB(0, redBrightness, 0, 0); // Adjust the Chainable LED brightness
       delay(100); // Delay to make the dimming visible
     } else {
-      dimming = false; // Stop dimming when brightness reaches 0
-      volumeDown = false; // Stop volume down process
-      leds.setColorRGB(0, 0, 0, 0); // Ensure the Chainable LED is off
+      if (redBrightness == 0) {
+        lighting = true;
+      }
     }
   }
+
+  if (lighting == true) {
+    if (orangeBrightness < 255) {
+      redBrightness += 5; // Increase red
+      orangeBrightness += 5; // Increase orange
+      leds.setColorRGB(0, redBrightness, orangeBrightness, 0); // Adjust the Chainable LED brightness
+      delay(100); // Delay to make the dimming visible
+    } else {
+      lighting = false;
+    }
+  }
+  
+
+        //   brightness += 5; // increment red
+        // orangeBrightness += 5; // increment orange 
+        // if (brightness == 255 || orangeBrightness == 165) {
+        //   leds.setColorRGB(0, brightness, orangeBrightness, 0);
+        // } else {
+        // } 
+
 
   // Volume down process
   if (volumeDown) {
