@@ -4,7 +4,7 @@
 #include <ChainableLED.h>
 
 // D2 = on/off
-// D3 = pressure
+// D5 & D6 = LED
 // D8 = music player
 // A1 = knob
 
