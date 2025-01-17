@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <RedMP3.h>
-#include <ChainableLED.h>
 #include <Adafruit_NeoPixel.h>
 
 #define MODE_BUTTON 3
@@ -10,8 +9,10 @@
 #define KNOB A1
 #define MP3_RX 8
 #define MP3_TX 9
-#define NEOPIXEL_PIN 7
+#define NEOPIXEL_PIN 4
 #define NUMPIXELS 15
+#define SECOND_STRIP_PIN 5
+#define SECOND_NUMPIXELS 15
 
 enum Mode
 {
@@ -23,8 +24,8 @@ class LightAndMusicController
 {
 private:
     MP3 mp3;
-    ChainableLED leds;
     Adafruit_NeoPixel strip;
+    Adafruit_NeoPixel secondStrip;
     Mode currentMode;
     int wakeupTime;
     int redLightTime;
@@ -37,8 +38,8 @@ private:
     bool settingMode;
 
 public:
-    LightAndMusicController(int mp3Rx, int mp3Tx, int ledPin1, int ledPin2, int ledCount, int neoPixelPin, int numPixels)
-        : mp3(mp3Rx, mp3Tx), leds(ledPin1, ledPin2, ledCount), strip(numPixels, neoPixelPin, NEO_GRB + NEO_KHZ800), currentMode(SET_WAKEUP_TIME), wakeupTime(1), redLightTime(1), brightness(255), volume(0), dimming(false), previousBrightness(255), previousVolume(0), musicIndex(1), settingMode(false) {}
+    LightAndMusicController(int mp3Rx, int mp3Tx, int neoPixelPin, int numPixels, int secondNeoPixelPin, int secondNumPixels)
+        : mp3(mp3Rx, mp3Tx), strip(numPixels, neoPixelPin, NEO_GRB + NEO_KHZ800), secondStrip(secondNumPixels, secondNeoPixelPin, NEO_GRB + NEO_KHZ800), currentMode(SET_WAKEUP_TIME), wakeupTime(1), redLightTime(1), brightness(255), volume(0), dimming(false), previousBrightness(255), previousVolume(0), musicIndex(1), settingMode(false) {}
 
     void initialize()
     {
@@ -52,6 +53,12 @@ public:
 
         strip.begin();
         strip.show(); // Initialize all pixels to 'off'
+
+        secondStrip.begin();
+        secondStrip.show(); // Initialize all pixels to 'off'
+
+        // Set initial white light on the second LED strip
+        setSecondStripColor(secondStrip.Color(255, 255, 255));
     }
 
     void update()
@@ -86,11 +93,11 @@ private:
             // Update NeoPixel strip based on mode
             if (currentMode == SET_WAKEUP_TIME)
             {
-                setStripColor(strip.Color(0, 0, 255)); // Blue for SET_WAKEUP_TIME
+                setStripColor(strip.Color(0, 0, 100)); // Blue for SET_WAKEUP_TIME
             }
             else
             {
-                setStripColor(strip.Color(255, 0, 0)); // Red for SET_RED_LIGHT_TIME
+                setStripColor(strip.Color(100, 0, 0)); // Red for SET_RED_LIGHT_TIME
             }
         }
     }
@@ -98,39 +105,78 @@ private:
     void setWakeupTime()
     {
         int newWakeupTime = map(analogRead(KNOB), 0, 1023, 1, 8);
+        delay(50); // Add a small delay to debounce the knob input
         if (newWakeupTime != wakeupTime)
         {
             wakeupTime = newWakeupTime;
             Serial.print("Wakeup Time set to: ");
             Serial.println(wakeupTime);
-            setStripColor(strip.Color(0, 0, 255)); // Blue for feedback
+            updateStripColor(strip.Color(0, 0, 255), wakeupTime); // Blue intensity based on wakeup time
         }
     }
 
     void setRedLightTime()
     {
         int newRedLightTime = map(analogRead(KNOB), 0, 1023, 1, 30);
+        delay(50); // Add a small delay to debounce the knob input
         if (newRedLightTime != redLightTime)
         {
             redLightTime = newRedLightTime;
             Serial.print("Red Light Time set to: ");
             Serial.println(redLightTime);
-            setStripColor(strip.Color(255, 0, 0)); // Red for feedback
+            updateStripColor(strip.Color(255, 0, 0), redLightTime); // Red intensity based on red light time
         }
+    }
+
+    void updateStripColor(uint32_t color, int value)
+    {
+        int numPixelsToLight = value; // Directly use the value for the number of pixels
+        for (int i = 0; i < NUMPIXELS; i++)
+        {
+            if (i < numPixelsToLight)
+            {
+                strip.setPixelColor(i, color);
+            }
+            else
+            {
+                strip.setPixelColor(i, 0); // Turn off the remaining pixels
+            }
+        }
+        strip.show();
     }
 
     void handlePressureButton()
     {
         if (digitalRead(PRESSURE_BUTTON) == HIGH)
         {
-            volume = 15; // Set volume to 15 when starting the dimming process
-            mp3.playWithVolume(musicIndex, volume);
-            Serial.println("Playing noise from MP3 player at volume 15");
-            leds.setColorRGB(0, 255, 0, 0); // Red light
-            dimming = true;
-            brightness = 255;
-            Serial.println("Pressure button pressed: Playing noise and emitting red light");
-            delay(500); // Debounce delay
+            if (!dimming)
+            {
+                mp3.playWithVolume(4, 15);
+                delay(3000); // Play the init sound for 3 seconds
+
+                volume = 15; // Set volume to 15 when starting the dimming process
+                mp3.playWithVolume(musicIndex, volume);
+                Serial.println("Playing noise from MP3 player at volume 15");
+                setSecondStripColor(secondStrip.Color(255, 0, 0)); // Red light on the second LED strip
+                dimming = true;
+                brightness = 255;
+                Serial.println("Pressure button pressed: Playing noise and emitting red light");
+                delay(500); // Debounce delay
+
+                // Turn off the main LED strip
+                setStripColor(strip.Color(0, 0, 0));
+            }
+        }
+        else
+        {
+            if (dimming)
+            {
+                dimming = false;
+                setSecondStripColor(secondStrip.Color(255, 255, 255)); // Set white light on the second LED strip
+                mp3.setVolume(0);
+                Serial.println("Pressure button released: Light and volume turned off. Returning to white light.");
+                setStripColor(strip.Color(0, 0, 0)); // Turn off the main LED strip
+            }
         }
 
         if (dimming)
@@ -140,25 +186,18 @@ private:
                 brightness -= 5;
                 volume = max(volume - 0.3, 0.0);
                 analogWrite(LED_BUILTIN, brightness);
-                leds.setColorRGB(0, brightness, 0, 0);
+                setSecondStripColor(secondStrip.Color(brightness, 0, 0)); // Adjust brightness on the second LED strip
                 mp3.setVolume(static_cast<int>(volume));
-
-                if (brightness != previousBrightness || volume != previousVolume)
-                {
-                    Serial.print("Dimming... Brightness: ");
-                    Serial.print(brightness);
-                    Serial.print(", Volume: ");
-                    Serial.println(volume);
-                    previousBrightness = brightness;
-                    previousVolume = volume;
-                }
-
+                Serial.print("Dimming... Brightness: ");
+                Serial.print(brightness);
+                Serial.print(", Volume: ");
+                Serial.println(volume);
                 delay(100);
             }
             else
             {
                 dimming = false;
-                leds.setColorRGB(0, 0, 0, 0);
+                setSecondStripColor(secondStrip.Color(0, 0, 0)); // Turn off the second LED strip
                 mp3.setVolume(0);
                 Serial.println("Dimming complete: Light and volume turned off. Good night!");
 
@@ -176,8 +215,7 @@ private:
                     red += 5;
                     green += 1;
                     mp3.setVolume(volume);
-                    leds.setColorRGB(0, red, green, 0);
-                    setStripColor(strip.Color(red, green, 0)); // Update NeoPixel strip
+                    setSecondStripColor(secondStrip.Color(red, green, 0)); // Update second LED strip
                     Serial.print("Volume: ");
                     Serial.print(volume);
                     Serial.print(", Red: ");
@@ -188,14 +226,14 @@ private:
                 }
                 volume = 10;
                 mp3.setVolume(volume);
-                leds.setColorRGB(0, 255, 165, 0);        // Orange light
-                setStripColor(strip.Color(255, 165, 0)); // Update NeoPixel strip
+                setSecondStripColor(secondStrip.Color(255, 165, 0)); // Orange light on the second LED strip
                 Serial.print("Volume: ");
                 Serial.print(volume);
                 Serial.print(", Red: ");
                 Serial.print(red);
                 Serial.print(", Green: ");
                 Serial.println(green);
+                Serial.println("Brighting process complete. Good morning!");
             }
         }
     }
@@ -208,18 +246,25 @@ private:
         }
         strip.show();
     }
+
+    void setSecondStripColor(uint32_t color)
+    {
+        for (int i = 0; i < SECOND_NUMPIXELS; i++)
+        {
+            secondStrip.setPixelColor(i, color);
+        }
+        secondStrip.show();
+    }
 };
 
-LightAndMusicController controller(MP3_RX, MP3_TX, 5, 6, 1, NEOPIXEL_PIN, NUMPIXELS);
+LightAndMusicController controller(MP3_RX, MP3_TX, NEOPIXEL_PIN, NUMPIXELS, SECOND_STRIP_PIN, SECOND_NUMPIXELS);
 
 void setup()
 {
     controller.initialize();
-    delay(500);
 }
 
 void loop()
 {
     controller.update();
-    delay(750); // Add a delay to slow down the loop
 }
