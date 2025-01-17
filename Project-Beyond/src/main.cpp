@@ -151,7 +151,7 @@ private:
         {
             if (!dimming)
             {
-                mp3.playWithVolume(4, 10);
+                mp3.playWithVolume(4, 15);
                 delay(3000); // Play the init sound for 3 seconds
 
                 volume = 15; // Set volume to 15 when starting the dimming process
@@ -226,18 +226,14 @@ private:
                 }
                 volume = 10;
                 mp3.setVolume(volume);
-                setSecondStripColor(secondStrip.Color(red, green, 0)); // Orange light on the second LED strip
+                setSecondStripColor(secondStrip.Color(255, 165, 0)); // Orange light on the second LED strip
                 Serial.print("Volume: ");
                 Serial.print(volume);
                 Serial.print(", Red: ");
                 Serial.print(red);
                 Serial.print(", Green: ");
                 Serial.println(green);
-
-                while (digitalRead(PRESSURE_BUTTON) == HIGH)
-                {
-                    Serial.println("Program completed.");
-                }
+                Serial.println("Brighting process complete. Good morning!");
             }
         }
     }
