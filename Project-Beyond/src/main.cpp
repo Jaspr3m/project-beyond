@@ -233,12 +233,18 @@ private:
                 Serial.print(red);
                 Serial.print(", Green: ");
                 Serial.println(green);
-
-                while (digitalRead(PRESSURE_BUTTON) == HIGH)
-                {
-                    Serial.println("Program completed.");
+                
+                
+                if (digitalRead(PRESSURE_BUTTON) == HIGH) {
+                    while (digitalRead(PRESSURE_BUTTON) == HIGH)
+                        {
+                            Serial.println("Program completed. Holding down button.");
+                        }
+                } else {
+                    Serial.println("Program completed. Button not held down.");
+                    mp3.setVolume(0);
                 }
-            }
+            } 
         }
     }
 
