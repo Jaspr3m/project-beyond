@@ -241,7 +241,7 @@ private:
                             Serial.println("Program completed. Holding down button.");
                         }
                 } else {
-                    Serial.println("Program completed. Button not held down.");
+                    dimming = false;
                     mp3.setVolume(0);
                 }
             } 
